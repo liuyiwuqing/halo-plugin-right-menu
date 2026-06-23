@@ -73,4 +73,16 @@ class RightMenuHtmlTplTest {
         assertThat(html).contains("\"subjectName\":\"post-a\"");
         assertThat(html).contains("\"subjectTitle\":\"文章 A\"");
     }
+
+    @Test
+    void embedsPathRulesForPjaxRuntimePathChecks() {
+        var setting = RightMenuSetting.defaults()
+            .setIncludePaths(List.of("/posts/**"))
+            .setExcludePaths(List.of("/posts/private/**"));
+
+        String html = RightMenuHtmlTpl.configScript(setting);
+
+        assertThat(html).contains("\"includePaths\":[\"/posts/**\"]");
+        assertThat(html).contains("\"excludePaths\":[\"/posts/private/**\"]");
+    }
 }

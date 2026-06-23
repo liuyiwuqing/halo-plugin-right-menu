@@ -102,6 +102,12 @@
   object-fit: contain;
 }
 
+.right-menu-icon-svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
 .right-menu-icon-fallback {
   font-weight: 600;
 }

@@ -48,6 +48,8 @@ public final class RightMenuHtmlTpl {
         RightMenuSetting setting = rawSetting == null ? RightMenuSetting.defaults() : rawSetting;
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("enabled", setting.enabledOrDefault());
+        config.put("includePaths", setting.includePathsOrDefault());
+        config.put("excludePaths", setting.excludePathsOrDefault());
         config.put("pjaxCompatible", setting.pjaxCompatibleOrDefault());
         config.put("showNativeOnEditable", setting.showNativeOnEditableOrDefault());
         config.put("menuItems", setting.enabledMenuItems());
