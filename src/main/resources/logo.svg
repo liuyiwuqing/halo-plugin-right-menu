@@ -1,0 +1,64 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">全能右键</title>
+  <desc id="desc">A blog article with an extended right-click context menu for the Halo right-menu plugin.</desc>
+  <defs>
+    <linearGradient id="backgroundGradient" x1="37" y1="24" x2="219" y2="232" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563EB"/>
+      <stop offset="0.48" stop-color="#0F172A"/>
+      <stop offset="1" stop-color="#0D9488"/>
+    </linearGradient>
+    <linearGradient id="articleGradient" x1="57" y1="42" x2="172" y2="192" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E0F2FE"/>
+    </linearGradient>
+    <linearGradient id="menuGradient" x1="126" y1="67" x2="215" y2="189" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E293B"/>
+      <stop offset="1" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="cursorGradient" x1="69" y1="123" x2="133" y2="207" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#BAE6FD"/>
+    </linearGradient>
+    <filter id="mainShadow" x="33" y="33" width="190" height="190" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="14" stdDeviation="13" flood-color="#020617" flood-opacity="0.32"/>
+    </filter>
+    <filter id="menuShadow" x="105" y="57" width="126" height="154" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#020617" flood-opacity="0.42"/>
+    </filter>
+  </defs>
+
+  <rect width="256" height="256" rx="50" fill="url(#backgroundGradient)"/>
+  <path d="M35 61C57 31 94 20 128 31C158 41 180 65 188 96" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" opacity="0.16"/>
+  <path d="M42 199C64 221 99 232 134 225C168 219 197 197 211 166" stroke="#5EEAD4" stroke-width="8" stroke-linecap="round" opacity="0.18"/>
+  <circle cx="204" cy="54" r="8" fill="#FACC15" opacity="0.9"/>
+  <circle cx="220" cy="73" r="4" fill="#FFFFFF" opacity="0.55"/>
+
+  <g filter="url(#mainShadow)">
+    <path d="M60 48H148L180 80V190C180 200.493 171.493 209 161 209H60C49.507 209 41 200.493 41 190V67C41 56.507 49.507 48 60 48Z" fill="url(#articleGradient)"/>
+    <path d="M148 48V70C148 76.627 153.373 82 160 82H180L148 48Z" fill="#93C5FD"/>
+    <rect x="65" y="82" width="61" height="10" rx="5" fill="#0F172A"/>
+    <rect x="65" y="107" width="88" height="8" rx="4" fill="#CBD5E1"/>
+    <rect x="65" y="128" width="72" height="8" rx="4" fill="#CBD5E1"/>
+    <rect x="65" y="149" width="82" height="8" rx="4" fill="#CBD5E1"/>
+    <rect x="65" y="170" width="51" height="8" rx="4" fill="#38BDF8"/>
+  </g>
+
+  <g filter="url(#menuShadow)">
+    <rect x="119" y="73" width="96" height="126" rx="24" fill="url(#menuGradient)"/>
+    <rect x="130" y="88" width="74" height="28" rx="14" fill="#14B8A6"/>
+    <rect x="139" y="98" width="11" height="8" rx="4" fill="#ECFEFF"/>
+    <rect x="158" y="98" width="34" height="8" rx="4" fill="#ECFEFF"/>
+    <circle cx="146" cy="135" r="7" fill="#38BDF8"/>
+    <rect x="160" y="131" width="34" height="8" rx="4" fill="#E2E8F0"/>
+    <circle cx="146" cy="159" r="7" fill="#FACC15"/>
+    <rect x="160" y="155" width="28" height="8" rx="4" fill="#E2E8F0"/>
+    <circle cx="146" cy="183" r="7" fill="#FB7185"/>
+    <rect x="160" y="179" width="40" height="8" rx="4" fill="#E2E8F0"/>
+  </g>
+
+  <path d="M92 116L92 209L117 184L133 226L156 217L139 174H177L92 116Z" fill="url(#cursorGradient)"/>
+  <path d="M92 116L92 209L117 184L133 226L156 217L139 174H177L92 116Z" stroke="#020617" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M104 137V180L116 167L135 209L142 206L123 160H148L104 137Z" fill="#0EA5E9"/>
+  <circle cx="124" cy="101" r="19" stroke="#67E8F9" stroke-width="7"/>
+  <circle cx="124" cy="101" r="6" fill="#67E8F9"/>
+</svg>

@@ -1,0 +1,27 @@
+# Refer https://docs.halo.run/developer-guide/plugin/basics/manifest
+
+apiVersion: plugin.halo.run/v1alpha1
+kind: Plugin
+metadata:
+  # The name defines how the plugin is invoked, A unique name
+  name: right-menu
+spec:
+  enabled: true
+  requires: ">=2.25.0"
+  author:
+    name: Lywq
+    website: https://blog.muyin.site
+  logo: logo.svg
+  settingName: plugin-right-menu-settings
+  configMapName: plugin-right-menu-configmap
+  homepage: https://github.com/liuyiwuqing/halo-plugin-right-menu#readme
+  repo: https://github.com/liuyiwuqing/halo-plugin-right-menu
+  issues: https://github.com/liuyiwuqing/halo-plugin-right-menu/issues
+  displayName: "全能右键"
+  description: "为 Halo 博客主题页面注入可配置的自定义右键菜单。"
+  pluginDependencies:
+    "PluginMember?": ">=1.1.4-alpha6"
+    "LinksSubmit?": ">=2.3.5"
+  license:
+    - name: "GPL-3.0"
+      url: "https://github.com/liuyiwuqing/halo-plugin-right-menu/blob/main/LICENSE"
