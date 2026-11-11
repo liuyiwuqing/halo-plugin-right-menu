@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { FormKit } from '@formkit/vue'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { FormKit, parentSymbol } from '@formkit/vue'
+import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
 
 type Item = {
   id?: string
@@ -22,7 +22,9 @@ type Parent = {
   off: (receipt: string) => void
 }
 const props = defineProps<{ context: { node: { parent?: Parent } } }>()
-const settings = ref<Settings>((props.context.node.parent?.value || {}) as Settings)
+// Ignored inputs are detached from the form tree; use the surrounding form provider.
+const parent = props.context.node.parent || inject(parentSymbol, undefined)
+const settings = ref<Settings>((parent?.value || {}) as Settings)
 const scenario = ref('common')
 const scenarios = [
   { label: '普通页面', value: 'common' },
@@ -33,12 +35,12 @@ const scenarios = [
 ]
 let receipt: string | undefined
 onMounted(() => {
-  receipt = props.context.node.parent?.on('input', ({ payload }) => {
+  receipt = parent?.on('commit', ({ payload }) => {
     settings.value = (payload || {}) as Settings
   })
 })
 onBeforeUnmount(() => {
-  if (receipt) props.context.node.parent?.off(receipt)
+  if (receipt) parent?.off(receipt)
 })
 const groups = computed(() => {
   const entries = new Map<string, Item[]>()
