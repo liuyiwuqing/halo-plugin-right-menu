@@ -36,7 +36,8 @@ const scenarios = [
 let receipt: string | undefined
 onMounted(() => {
   receipt = parent?.on('commit', ({ payload }) => {
-    settings.value = (payload || {}) as Settings
+    // FormKit mutates group values in place; a new root reference invalidates the preview.
+    settings.value = { ...((payload || {}) as Settings) }
   })
 })
 onBeforeUnmount(() => {
