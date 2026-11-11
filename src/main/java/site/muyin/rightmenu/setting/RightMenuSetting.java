@@ -2,7 +2,9 @@ package site.muyin.rightmenu.setting;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.Comparator;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -27,6 +29,7 @@ public class RightMenuSetting {
     private List<String> excludePaths = List.of("/console/**", "/uc/**", "/apis/**");
     private Boolean pjaxCompatible = true;
     private Boolean showNativeOnEditable = true;
+    private Boolean groupMenu = true;
     private Style style = new Style();
     private List<MenuItem> menuItems = defaultMenuItems();
 
@@ -59,8 +62,9 @@ public class RightMenuSetting {
     }
 
     public List<MenuItem> enabledMenuItems() {
-        List<MenuItem> items = menuItems == null || menuItems.isEmpty() ? defaultMenuItems() : menuItems;
+        List<MenuItem> items = menuItems == null ? defaultMenuItems() : menuItems;
         return items.stream()
+            .filter(Objects::nonNull)
             .filter(MenuItem::enabledOrDefault)
             .map(RightMenuSetting::withDefaultIdentifier)
             .sorted(Comparator.comparingInt(MenuItem::orderOrDefault))
@@ -69,22 +73,28 @@ public class RightMenuSetting {
 
     private static MenuItem withDefaultIdentifier(MenuItem item) {
         return new MenuItem()
-            .setId(defaultIdentifier(item.getId()))
+            .setId(defaultIdentifier(item))
             .setLabel(item.getLabel())
             .setAction(item.getAction())
             .setIcon(item.getIcon())
             .setContext(item.getContext())
+            .setGroup(item.getGroup())
             .setUrl(item.getUrl())
             .setTarget(item.getTarget())
             .setEnabled(item.getEnabled())
             .setOrder(item.getOrder());
     }
 
-    private static String defaultIdentifier(String id) {
+    private static String defaultIdentifier(MenuItem item) {
+        String id = item.getId();
         if (id != null && !id.isBlank()) {
             return id;
         }
-        return "menu-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        String identity = String.join("\u0000", Objects.toString(item.getAction(), ""),
+            Objects.toString(item.getLabel(), ""), Objects.toString(item.getContext(), ""),
+            Objects.toString(item.getUrl(), ""), Objects.toString(item.getOrder(), ""));
+        return "menu-" + UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8))
+            .toString().replace("-", "").substring(0, 12);
     }
 
     private static List<MenuItem> defaultMenuItems() {
@@ -92,6 +102,11 @@ public class RightMenuSetting {
             item("copy-page-link", "复制链接", "copyPageLink", "ri:link", "common", 10),
             item("copy-page-title-link", "复制标题和链接", "copyPageTitleLink", "ri:file-copy-line", "common", 20),
             item("copy-selection", "复制选中文本", "copySelection", "ri:text", "text", 30),
+            item("copy-markdown-quote", "复制 Markdown 引用", "copyMarkdownQuote", "ri:file-copy-line", "text", 31),
+            item("create-quote-card", "摘句分享卡", "createQuoteCard", "ri:image-line", "text", 32),
+            item("ai-explain", "AI 通俗解释", "aiExplain", "ri:text", "text", 33),
+            item("ai-example", "AI 举个例子", "aiExample", "ri:text", "text", 34),
+            item("ai-translate", "AI 翻译选区", "aiTranslate", "ri:text", "text", 35),
             item("copy-image-url", "复制图片地址", "copyImageUrl", "ri:image-line", "image", 40),
             item("open-image", "打开图片", "openImage", "ri:external-link-line", "image", 50),
             item("copy-link-url", "复制链接地址", "copyLinkUrl", "ri:links-line", "link", 60),
@@ -99,6 +114,8 @@ public class RightMenuSetting {
             item("scroll-top", "返回顶部", "scrollTop", "ri:arrow-up-line", "common", 80),
             item("reload", "刷新页面", "reload", "ri:refresh-line", "common", 90),
             item("home", "返回首页", "home", "ri:home-4-line", "common", 100),
+            item("save-reading-position", "读到这里", "saveReadingPosition", "ri:star-line", "article", 101),
+            item("resume-reading-position", "继续上次阅读", "resumeReadingPosition", "ri:arrow-up-line", "article", 102),
             item("member-favorite", "会员收藏", "memberFavorite", "ri:star-line", "common", 110),
             item("member-sign-in", "会员签到", "memberSignIn", "ri:calendar-check-line", "common", 120),
             item("open-links-submit", "申请友链", "openLinksSubmit", "ri:links-fill", "common", 130)
@@ -126,6 +143,7 @@ public class RightMenuSetting {
         private String action;
         private String icon;
         private String context = "common";
+        private String group = "auto";
         private String url;
         private String target = "_self";
         private Boolean enabled = true;

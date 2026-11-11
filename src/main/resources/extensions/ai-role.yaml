@@ -1,0 +1,20 @@
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: rt-right-menu-ai-public
+  labels:
+    halo.run/role-template: "true"
+    halo.run/hidden: "true"
+    rbac.authorization.halo.run/aggregate-to-anonymous: "true"
+    rbac.authorization.halo.run/aggregate-to-authenticated: "true"
+  annotations:
+    rbac.authorization.halo.run/display-name: "使用右键 AI 阅读助手"
+rules:
+  # Halo treats /ai/config as resource ai with name config, not a subresource.
+  - apiGroups: ["api.right-menu.muyin.site"]
+    resources: ["ai"]
+    resourceNames: ["config"]
+    verbs: ["get"]
+  # POST to a named resource is classified as a non-resource request by Halo.
+  - nonResourceURLs: ["/apis/api.right-menu.muyin.site/v1alpha1/ai/explain"]
+    verbs: ["create"]

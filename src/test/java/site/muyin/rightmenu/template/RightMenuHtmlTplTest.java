@@ -47,6 +47,14 @@ class RightMenuHtmlTplTest {
             assertThat(item.getId()).startsWith("menu-").hasSize(17)
         );
         assertThat(menuItem.getId()).isNull();
+        assertThat(setting.enabledMenuItems().getFirst().getId()).isEqualTo(enabledItems.getFirst().getId());
+    }
+
+    @Test
+    void preservesAnIntentionallyEmptyMenu() {
+        var setting = RightMenuSetting.defaults().setMenuItems(List.of());
+        assertThat(setting.enabledMenuItems()).isEmpty();
+        assertThat(RightMenuHtmlTpl.configScript(setting)).contains("\"menuItems\":[]");
     }
 
     @Test

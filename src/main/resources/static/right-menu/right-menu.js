@@ -37,11 +37,19 @@
   var currentState = null;
   var currentConfig = null;
   var removeHandlers = [];
+  var returnFocus = null;
+  var pendingActions = new Set();
+  var favoriteStates = new Map();
+  var signedToday = false;
+  var panels = null;
+  var reader = null;
+  var ai = null;
 
   function readConfig() {
     var element = document.getElementById(CONFIG_ID);
     if (!element) {
-      return currentConfig || disabledConfig();
+      // Site rules survive PJAX, but page-specific article identity must not.
+      return currentConfig ? Object.assign({}, currentConfig, { currentPost: null }) : disabledConfig();
     }
     try {
       return normalizeConfig(JSON.parse(element.textContent || '{}'));
@@ -80,6 +88,7 @@
         return item && item.enabled !== false && item.label && item.action;
       }) : [],
       currentPost: normalizePostContext(raw.currentPost || raw.post),
+      groupMenu: raw.groupMenu !== false,
       style: {
         theme: ['auto', 'light', 'dark'].indexOf(style.theme) >= 0 ? style.theme : 'auto',
         primaryColor: String(style.primaryColor || '#111827'),
@@ -116,6 +125,14 @@
     if (!subjectName) {
       return null;
     }
+    try {
+      var permalink = new URL(post.permalink || window.location.href, window.location.href);
+      if (permalink.origin !== window.location.origin || permalink.pathname !== window.location.pathname) {
+        return null;
+      }
+    } catch (error) {
+      return null;
+    }
     return {
       subjectType: String(post.subjectType || 'POST'),
       subjectName: subjectName,
@@ -126,6 +143,7 @@
   }
 
   function init() {
+    if (panels) { panels.close(); }
     currentConfig = readConfig();
     bindHandlers();
     if (!isRuntimeEnabled(currentConfig)) {
@@ -133,8 +151,18 @@
       return;
     }
     ensureRoots();
+    if (!panels && window.RightMenuPanel) { panels = window.RightMenuPanel.create(); }
+    if (!reader && panels && window.RightMenuReader) {
+      reader = window.RightMenuReader.create({ panels: panels, notify: notify, copyText: copyText });
+    }
+    if (!ai && panels && window.RightMenuAi) {
+      ai = window.RightMenuAi.create({ panels: panels, notify: notify, copyText: copyText });
+    }
+    if (ai) { ai.refresh(); }
     applyStyle(currentConfig.style);
     closeMenu();
+    menuRoot.replaceChildren();
+    currentState = null;
   }
 
   function ensureRoots() {
@@ -144,6 +172,7 @@
       menuRoot.className = ROOT_CLASS;
       menuRoot.setAttribute('role', 'menu');
       menuRoot.setAttribute('aria-hidden', 'true');
+      menuRoot.hidden = true;
       document.body.appendChild(menuRoot);
     }
     toastRoot = document.querySelector('.' + TOAST_CLASS);
@@ -171,7 +200,11 @@
     addHandler(document, 'click', closeMenu);
     addHandler(document, 'keydown', handleKeyDown);
     addHandler(window, 'resize', closeMenu);
-    addHandler(window, 'scroll', closeMenu, true);
+    addHandler(window, 'scroll', function (event) {
+      if (!menuRoot || !menuRoot.contains(event.target)) {
+        closeMenu();
+      }
+    }, true);
     if (currentConfig && currentConfig.pjaxCompatible) {
       ['pjax:complete', 'pjax:end', 'turbo:load', 'swup:contentReplaced'].forEach(function (eventName) {
         addHandler(document, eventName, init);
@@ -187,6 +220,10 @@
   }
 
   function handleContextMenu(event) {
+    closeMenu();
+    if (event.shiftKey) {
+      return;
+    }
     currentConfig = readConfig();
     if (!isRuntimeEnabled(currentConfig)) {
       closeMenu();
@@ -194,8 +231,8 @@
     }
     if (!menuRoot || !toastRoot) {
       ensureRoots();
-      applyStyle(currentConfig.style);
     }
+    applyStyle(currentConfig.style);
     if (currentConfig.showNativeOnEditable && isEditable(event.target)) {
       return;
     }
@@ -204,11 +241,14 @@
       return shouldShowItem(item, currentState);
     });
     if (items.length === 0) {
+      menuRoot.replaceChildren();
       return;
     }
     event.preventDefault();
     renderMenu(items);
-    openMenu(event.clientX, event.clientY);
+    var anchor = event.target && event.target.getBoundingClientRect ? event.target.getBoundingClientRect() : null;
+    openMenu(event.clientX || (anchor ? anchor.left : 8), event.clientY || (anchor ? anchor.bottom : 8));
+    refreshIntegrationStatus(currentState);
   }
 
   function isRuntimeEnabled(config) {
@@ -318,7 +358,7 @@
     if (!target || target.nodeType !== 1) {
       return false;
     }
-    return !!target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="textbox"]');
+    return target.isContentEditable || !!target.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"], [role="textbox"]');
   }
 
   function collectState(target) {
@@ -331,6 +371,7 @@
       link: link,
       image: image,
       selection: selection,
+      selectionRanges: snapshotSelection(),
       pageUrl: window.location.href,
       pageTitle: document.title || window.location.href,
       post: currentConfig ? currentConfig.currentPost : null,
@@ -338,6 +379,19 @@
   }
 
   function shouldShowItem(item, state) {
+    if (/^ai(Explain|Example|Translate)$/.test(item.action) && (!ai || !ai.canShow(item.action, state))) { return false; }
+    if (['createQuoteCard', 'copyMarkdownQuote', 'saveReadingPosition', 'resumeReadingPosition'].indexOf(item.action) >= 0 && (!reader || !reader.canShow(item.action, state))) {
+      return false;
+    }
+    if (item.action === 'memberFavorite' && (!resolveFavoriteSubject(state) || !window.memberFavorite || typeof window.memberFavorite.toggle !== 'function')) {
+      return false;
+    }
+    if (item.action === 'memberSignIn' && (!window.memberSignIn || typeof window.memberSignIn.getStatus !== 'function' || typeof window.memberSignIn.signIn !== 'function')) {
+      return false;
+    }
+    if (item.action === 'openLinksSubmit' && (!document.getElementById('linksSubmit-overlay') || !linksSubmitApi())) {
+      return false;
+    }
     var context = item.context || 'common';
     if (context === 'text') {
       return !!state.selection;
@@ -348,20 +402,44 @@
     if (context === 'image') {
       return !!state.image;
     }
+    if (context === 'article') { return !!state.post; }
     return true;
   }
 
   function renderMenu(items) {
     var list = document.createElement('ul');
     list.className = 'right-menu-list';
+    if (currentConfig.groupMenu) {
+      var groups = new Map();
+      items.forEach(function (item) {
+        var group = menuGroup(item);
+        if (!groups.has(group)) { groups.set(group, []); }
+        groups.get(group).push(item);
+      });
+      items = [];
+      groups.forEach(function (entries, group) {
+        items.push({ heading: group });
+        items = items.concat(entries);
+      });
+    }
     items.forEach(function (item) {
       var li = document.createElement('li');
+      if (item.heading) {
+        li.className = 'right-menu-group';
+        li.setAttribute('role', 'presentation');
+        li.textContent = item.heading;
+        list.appendChild(li);
+        return;
+      }
       li.className = 'right-menu-item';
+      li.setAttribute('role', 'none');
       var button = document.createElement('button');
       button.className = 'right-menu-button';
       button.type = 'button';
       button.setAttribute('role', 'menuitem');
+      button.tabIndex = -1;
       button.dataset.action = item.action;
+      button.disabled = pendingActions.has(actionKey(item, currentState));
       button.addEventListener('click', function (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -371,7 +449,7 @@
       var icon = renderIcon(item);
       var label = document.createElement('span');
       label.className = 'right-menu-label';
-      label.textContent = item.label;
+      label.textContent = actionLabel(item, currentState);
 
       button.appendChild(icon);
       button.appendChild(label);
@@ -381,7 +459,18 @@
     menuRoot.replaceChildren(list);
   }
 
+  function menuGroup(item) {
+    var labels = { reading: '阅读工具', sharing: '复制与分享', navigation: '页面导航', interaction: '站点互动', custom: '自定义' };
+    if (item.group && item.group !== 'auto') { return labels[item.group] || labels.custom; }
+    if (/^(ai|createQuote|saveReading|resumeReading)/.test(item.action)) { return labels.reading; }
+    if (/^copy/.test(item.action)) { return labels.sharing; }
+    if (/^(member|openLinksSubmit)/.test(item.action)) { return labels.interaction; }
+    return labels.navigation;
+  }
+
   function openMenu(clientX, clientY) {
+    returnFocus = document.activeElement;
+    menuRoot.hidden = false;
     menuRoot.dataset.open = 'true';
     menuRoot.setAttribute('aria-hidden', 'false');
     menuRoot.style.left = '0px';
@@ -393,21 +482,26 @@
     menuRoot.style.left = Math.max(8, left) + 'px';
     menuRoot.style.top = Math.max(8, top) + 'px';
 
-    var firstButton = menuRoot.querySelector('button');
+    var firstButton = menuRoot.querySelector('button:not(:disabled)');
     if (firstButton) {
       firstButton.focus({ preventScroll: true });
     }
   }
 
-  function closeMenu() {
+  function closeMenu(restoreFocus) {
     if (!menuRoot) {
       return;
     }
     menuRoot.dataset.open = 'false';
     menuRoot.setAttribute('aria-hidden', 'true');
+    menuRoot.hidden = true;
+    if (restoreFocus !== false && menuRoot.contains(document.activeElement) && returnFocus && returnFocus.isConnected) {
+      returnFocus.focus({ preventScroll: true });
+    }
   }
 
   function deactivate() {
+    if (panels) { panels.close(); }
     currentState = null;
     closeMenu();
     if (toastRoot) {
@@ -417,8 +511,96 @@
   }
 
   function handleKeyDown(event) {
+    if (!menuRoot || menuRoot.hidden) {
+      return;
+    }
     if (event.key === 'Escape') {
       closeMenu();
+      event.preventDefault();
+      return;
+    }
+    if (event.key === 'Tab') {
+      closeMenu();
+      return;
+    }
+    var buttons = Array.from(menuRoot.querySelectorAll('button:not(:disabled)'));
+    if (!buttons.length || ['ArrowDown', 'ArrowUp', 'Home', 'End'].indexOf(event.key) < 0) {
+      return;
+    }
+    event.preventDefault();
+    var index = buttons.indexOf(document.activeElement);
+    if (event.key === 'Home') { index = 0; }
+    else if (event.key === 'End') { index = buttons.length - 1; }
+    else { index = (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length; }
+    buttons[index].focus();
+  }
+
+  function actionKey(item, state) {
+    var subject = item.action === 'memberFavorite' ? resolveFavoriteSubject(state) : null;
+    return item.action + ':' + (subject ? subject.subjectName : '');
+  }
+
+  function actionLabel(item, state) {
+    if (pendingActions.has(actionKey(item, state))) { return '处理中…'; }
+    if (item.action === 'memberFavorite') {
+      var subject = resolveFavoriteSubject(state);
+      if (subject && favoriteStates.get(subject.subjectName)) { return '取消收藏'; }
+    }
+    if (item.action === 'memberSignIn' && signedToday) { return '今日已签到'; }
+    return item.label;
+  }
+
+  function runPluginAction(item, state, execute) {
+    var key = actionKey(item, state);
+    if (pendingActions.has(key)) { return; }
+    pendingActions.add(key);
+    notify('处理中…');
+    Promise.resolve().then(execute).catch(function () {
+      notify('操作失败，请稍后重试');
+    }).finally(function () {
+      pendingActions.delete(key);
+      refreshActionButtons();
+    });
+  }
+
+  function refreshActionButtons() {
+    if (!menuRoot || menuRoot.hidden || !currentState) { return; }
+    currentConfig.menuItems.forEach(function (item) {
+      var button = Array.from(menuRoot.querySelectorAll('button')).find(function (node) { return node.dataset.action === item.action; });
+      if (button) {
+        button.disabled = pendingActions.has(actionKey(item, currentState));
+        button.querySelector('.right-menu-label').textContent = actionLabel(item, currentState);
+      }
+    });
+  }
+
+  function refreshIntegrationStatus(state) {
+    var subject = resolveFavoriteSubject(state);
+    if (subject && window.memberFavorite && typeof window.memberFavorite.getStatus === 'function' && menuRoot.querySelector('[data-action="memberFavorite"]')) {
+      Promise.resolve().then(function () { return window.memberFavorite.getStatus(subject); }).then(function (result) {
+        if (currentState !== state || pendingActions.has('memberFavorite:' + subject.subjectName)) { return; }
+        if (result && result.authenticated !== false && typeof result.favorited === 'boolean') {
+          favoriteStates.set(subject.subjectName, result.favorited);
+          refreshActionButtons();
+        }
+      }).catch(function () { /* Opening a menu must not trigger a login redirect. */ });
+    }
+    if (window.memberSignIn && menuRoot.querySelector('[data-action="memberSignIn"]')) {
+      Promise.resolve().then(function () { return loadMemberSignInConfig(window.memberSignIn); }).then(function (config) {
+        if (currentState !== state) { return null; }
+        if (config && config.enabled === false) {
+          var button = menuRoot.querySelector('[data-action="memberSignIn"]');
+          if (button) { button.closest('li').remove(); }
+          return null;
+        }
+        return window.memberSignIn.getStatus();
+      }).then(function (result) {
+        if (currentState !== state || pendingActions.has('memberSignIn:')) { return; }
+        if (result && result.authenticated !== false) {
+          signedToday = !!result.signed;
+          refreshActionButtons();
+        }
+      }).catch(function () { /* The action handles errors if the visitor chooses it. */ });
     }
   }
 
@@ -426,23 +608,34 @@
     var state = currentState || collectState(document.body);
     closeMenu();
     switch (item.action) {
+      case 'aiExplain':
+      case 'aiExample':
+      case 'aiTranslate':
+        if (ai) { ai.execute(item.action, state); }
+        break;
+      case 'createQuoteCard':
+      case 'copyMarkdownQuote':
+      case 'saveReadingPosition':
+      case 'resumeReadingPosition':
+        if (reader) { reader.execute(item.action, state); }
+        break;
       case 'copyPageLink':
-        copyText(state.pageUrl);
+        copyText(state.pageUrl, state.selectionRanges);
         break;
       case 'copyPageTitleLink':
-        copyText(state.pageTitle + '\n' + state.pageUrl);
+        copyText(state.pageTitle + '\n' + state.pageUrl, state.selectionRanges);
         break;
       case 'copySelection':
-        copyText(state.selection);
+        copyText(state.selection, state.selectionRanges);
         break;
       case 'copyImageUrl':
-        copyText(state.image ? state.image.currentSrc || state.image.src : '');
+        copyText(state.image ? state.image.currentSrc || state.image.src : '', state.selectionRanges);
         break;
       case 'openImage':
         openUrl(state.image ? state.image.currentSrc || state.image.src : '', item.target);
         break;
       case 'copyLinkUrl':
-        copyText(state.link ? state.link.href : '');
+        copyText(state.link ? state.link.href : '', state.selectionRanges);
         break;
       case 'openLink':
         openUrl(state.link ? state.link.href : '', item.target);
@@ -463,37 +656,49 @@
         openUrl(interpolateUrl(item.url || '', state), item.target);
         break;
       case 'memberFavorite':
-        executeMemberFavorite(state);
+        runPluginAction(item, state, function () { return executeMemberFavorite(state); });
         break;
       case 'memberSignIn':
-        executeMemberSignIn();
+        runPluginAction(item, state, executeMemberSignIn);
         break;
       case 'openLinksSubmit':
-        executeOpenLinksSubmit();
+        runPluginAction(item, state, executeOpenLinksSubmit);
         break;
       default:
         notify('暂不支持该动作');
     }
   }
 
-  function copyText(text) {
+  function snapshotSelection() {
+    var selection = window.getSelection();
+    var ranges = [];
+    for (var index = 0; selection && index < selection.rangeCount; index++) {
+      ranges.push(selection.getRangeAt(index).cloneRange());
+    }
+    return ranges;
+  }
+
+  function copyText(text, ranges) {
     var value = String(text || '').trim();
     if (!value) {
       notify('没有可复制的内容');
-      return;
+      return Promise.resolve(false);
     }
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(value).then(function () {
+      return navigator.clipboard.writeText(value).then(function () {
         notify('已复制');
+        return true;
       }).catch(function () {
-        fallbackCopy(value);
+        return fallbackCopy(value, ranges);
       });
-      return;
     }
-    fallbackCopy(value);
+    return Promise.resolve(fallbackCopy(value, ranges));
   }
 
-  function fallbackCopy(value) {
+  function fallbackCopy(value, ranges) {
+    var selection = window.getSelection();
+    ranges = ranges || snapshotSelection();
+    var activeElement = document.activeElement;
     var textarea = document.createElement('textarea');
     textarea.value = value;
     textarea.setAttribute('readonly', 'readonly');
@@ -501,20 +706,37 @@
     textarea.style.left = '-9999px';
     document.body.appendChild(textarea);
     textarea.select();
+    var copied = false;
     try {
-      document.execCommand('copy');
-      notify('已复制');
+      copied = !!document.execCommand('copy');
+      notify(copied ? '已复制' : '复制失败');
     } catch (error) {
       notify('复制失败');
     } finally {
       textarea.remove();
+      if (activeElement && activeElement.isConnected) { activeElement.focus({ preventScroll: true }); }
+      if (selection) {
+        selection.removeAllRanges();
+        ranges.forEach(function (range) { selection.addRange(range); });
+      }
     }
+    return copied;
   }
 
   function openUrl(url, target) {
     var value = String(url || '').trim();
     if (!value) {
       notify('链接为空');
+      return;
+    }
+    try {
+      var parsed = new URL(value, window.location.href);
+      if (['http:', 'https:', 'mailto:', 'tel:'].indexOf(parsed.protocol) < 0) {
+        notify('不支持的链接协议');
+        return;
+      }
+    } catch (error) {
+      notify('链接格式无效');
       return;
     }
     if (target === '_blank') {
@@ -544,7 +766,7 @@
     }
 
     var favoriteApi = null;
-    waitForGlobalApi('memberFavorite', function (api) {
+    return waitForGlobalApi('memberFavorite', function (api) {
       return api && typeof api.toggle === 'function';
     }, 3000).then(function (api) {
       favoriteApi = api;
@@ -557,7 +779,12 @@
           redirectToLogin(result.loginUrl || resolveApiLoginUrl(favoriteApi));
           return;
         }
-        notify(result && result.favorited ? '已加入收藏' : '已取消收藏');
+        if (!result || typeof result.favorited !== 'boolean') {
+          notify('收藏状态未返回，请稍后重试');
+          return;
+        }
+        favoriteStates.set(subject.subjectName, result.favorited);
+        notify(result.favorited ? '已加入收藏' : '已取消收藏');
       });
     }).catch(function (error) {
       if (isUnauthorized(error)) {
@@ -570,7 +797,7 @@
 
   function executeMemberSignIn() {
     var signInApi = null;
-    waitForGlobalApi('memberSignIn', function (api) {
+    return waitForGlobalApi('memberSignIn', function (api) {
       return api && typeof api.getStatus === 'function' && typeof api.signIn === 'function';
     }, 3000).then(function (api) {
       signInApi = api;
@@ -589,6 +816,7 @@
             return null;
           }
           if (status && status.signed) {
+            signedToday = true;
             notify('今日已签到');
             return null;
           }
@@ -597,6 +825,7 @@
               redirectToLogin(result.loginUrl || resolveApiLoginUrl(signInApi));
               return;
             }
+            signedToday = true;
             notify(result && result.message ? result.message : '签到成功');
           });
         });
@@ -611,7 +840,7 @@
   }
 
   function executeOpenLinksSubmit() {
-    waitForLinksSubmitApi(3000).then(function (api) {
+    return waitForLinksSubmitApi(3000).then(function (api) {
       if (!api) {
         notify('申请友链需要启用友链自助提交插件');
         return;
@@ -655,6 +884,8 @@
   }
 
   function waitForLinksSubmitApi(timeout) {
+    var ready = linksSubmitApi();
+    if (ready) { return Promise.resolve(ready); }
     return waitForGlobalApi('LinksSubmit', function (api) {
       return api && typeof api.openLinksSubmitOverlay === 'function';
     }, timeout).then(function (api) {
@@ -668,6 +899,13 @@
       }
       return null;
     });
+  }
+
+  function linksSubmitApi() {
+    if (window.LinksSubmit && typeof window.LinksSubmit.openLinksSubmitOverlay === 'function') {
+      return window.LinksSubmit;
+    }
+    return typeof window.openLinksSubmitOverlay === 'function' ? { openLinksSubmitOverlay: window.openLinksSubmitOverlay } : null;
   }
 
   function waitForGlobalApi(name, isReady, timeout) {
@@ -850,6 +1088,8 @@
   }
 
   function destroy() {
+    if (ai) { ai.destroy(); ai = null; }
+    if (panels) { panels.destroy(); panels = null; reader = null; }
     removeHandlers.forEach(function (remove) {
       remove();
     });

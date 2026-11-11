@@ -6,125 +6,6 @@ spec:
   forms:
     - group: general
       label: 基本设置
-      value:
-        enabled: true
-        includePaths: []
-        excludePaths:
-          - /console/**
-          - /uc/**
-          - /apis/**
-        pjaxCompatible: true
-        showNativeOnEditable: true
-        style:
-          theme: auto
-          primaryColor: "#111827"
-          menuWidth: 220
-          borderRadius: 8
-        menuItems:
-          - id: copy-page-link
-            label: 复制链接
-            action: copyPageLink
-            icon: ri:link
-            context: common
-            target: _self
-            enabled: true
-            order: 10
-          - id: copy-page-title-link
-            label: 复制标题和链接
-            action: copyPageTitleLink
-            icon: ri:file-copy-line
-            context: common
-            target: _self
-            enabled: true
-            order: 20
-          - id: copy-selection
-            label: 复制选中文本
-            action: copySelection
-            icon: ri:text
-            context: text
-            target: _self
-            enabled: true
-            order: 30
-          - id: copy-image-url
-            label: 复制图片地址
-            action: copyImageUrl
-            icon: ri:image-line
-            context: image
-            target: _self
-            enabled: true
-            order: 40
-          - id: open-image
-            label: 打开图片
-            action: openImage
-            icon: ri:external-link-line
-            context: image
-            target: _blank
-            enabled: true
-            order: 50
-          - id: copy-link-url
-            label: 复制链接地址
-            action: copyLinkUrl
-            icon: ri:links-line
-            context: link
-            target: _self
-            enabled: true
-            order: 60
-          - id: open-link
-            label: 打开链接
-            action: openLink
-            icon: ri:external-link-line
-            context: link
-            target: _blank
-            enabled: true
-            order: 70
-          - id: scroll-top
-            label: 返回顶部
-            action: scrollTop
-            icon: ri:arrow-up-line
-            context: common
-            target: _self
-            enabled: true
-            order: 80
-          - id: reload
-            label: 刷新页面
-            action: reload
-            icon: ri:refresh-line
-            context: common
-            target: _self
-            enabled: true
-            order: 90
-          - id: home
-            label: 返回首页
-            action: home
-            icon: ri:home-4-line
-            context: common
-            target: _self
-            enabled: true
-            order: 100
-          - id: member-favorite
-            label: 会员收藏
-            action: memberFavorite
-            icon: ri:star-line
-            context: common
-            target: _self
-            enabled: true
-            order: 110
-          - id: member-sign-in
-            label: 会员签到
-            action: memberSignIn
-            icon: ri:calendar-check-line
-            context: common
-            target: _self
-            enabled: true
-            order: 120
-          - id: open-links-submit
-            label: 申请友链
-            action: openLinksSubmit
-            icon: ri:links-fill
-            context: common
-            target: _self
-            enabled: true
-            order: 130
       formSchema:
         - $formkit: switch
           key: general_enabled
@@ -209,12 +90,174 @@ spec:
               value: 8
               min: 0
               max: 16
+        - $formkit: switch
+          name: groupMenu
+          label: 菜单分组
+          value: true
+          help: 按阅读、复制分享、导航和站点互动分组；可单独设置每个菜单项的分组。
+        - $formkit: rightMenuPreview
+          name: menuPreview
+          label: 菜单预览
+          ignore: true
         - $formkit: array
           key: general_menuItems
           name: menuItems
           label: 菜单项
           help: 会员收藏、会员签到依赖会员插件；申请友链依赖友链自助提交插件。
-          value: []
+          value:
+            - id: copy-page-link
+              label: 复制链接
+              action: copyPageLink
+              icon: ri:link
+              context: common
+              target: _self
+              enabled: true
+              order: 10
+            - id: copy-page-title-link
+              label: 复制标题和链接
+              action: copyPageTitleLink
+              icon: ri:file-copy-line
+              context: common
+              target: _self
+              enabled: true
+              order: 20
+            - id: copy-selection
+              label: 复制选中文本
+              action: copySelection
+              icon: ri:text
+              context: text
+              target: _self
+              enabled: true
+              order: 30
+            - id: copy-image-url
+              label: 复制图片地址
+              action: copyImageUrl
+              icon: ri:image-line
+              context: image
+              target: _self
+              enabled: true
+              order: 40
+            - id: copy-markdown-quote
+              label: 复制 Markdown 引用
+              action: copyMarkdownQuote
+              icon: ri:file-copy-line
+              context: text
+              enabled: true
+              order: 31
+            - id: create-quote-card
+              label: 摘句分享卡
+              action: createQuoteCard
+              icon: ri:image-line
+              context: text
+              enabled: true
+              order: 32
+            - id: ai-explain
+              label: AI 通俗解释
+              action: aiExplain
+              icon: ri:text
+              context: text
+              enabled: true
+              order: 33
+            - id: ai-example
+              label: AI 举个例子
+              action: aiExample
+              icon: ri:text
+              context: text
+              enabled: true
+              order: 34
+            - id: ai-translate
+              label: AI 翻译选区
+              action: aiTranslate
+              icon: ri:text
+              context: text
+              enabled: true
+              order: 35
+            - id: save-reading-position
+              label: 读到这里
+              action: saveReadingPosition
+              icon: ri:star-line
+              context: article
+              enabled: true
+              order: 101
+            - id: resume-reading-position
+              label: 继续上次阅读
+              action: resumeReadingPosition
+              icon: ri:arrow-up-line
+              context: article
+              enabled: true
+              order: 102
+            - id: open-image
+              label: 打开图片
+              action: openImage
+              icon: ri:external-link-line
+              context: image
+              target: _blank
+              enabled: true
+              order: 50
+            - id: copy-link-url
+              label: 复制链接地址
+              action: copyLinkUrl
+              icon: ri:links-line
+              context: link
+              target: _self
+              enabled: true
+              order: 60
+            - id: open-link
+              label: 打开链接
+              action: openLink
+              icon: ri:external-link-line
+              context: link
+              target: _blank
+              enabled: true
+              order: 70
+            - id: scroll-top
+              label: 返回顶部
+              action: scrollTop
+              icon: ri:arrow-up-line
+              context: common
+              target: _self
+              enabled: true
+              order: 80
+            - id: reload
+              label: 刷新页面
+              action: reload
+              icon: ri:refresh-line
+              context: common
+              target: _self
+              enabled: true
+              order: 90
+            - id: home
+              label: 返回首页
+              action: home
+              icon: ri:home-4-line
+              context: common
+              target: _self
+              enabled: true
+              order: 100
+            - id: member-favorite
+              label: 会员收藏
+              action: memberFavorite
+              icon: ri:star-line
+              context: common
+              target: _self
+              enabled: true
+              order: 110
+            - id: member-sign-in
+              label: 会员签到
+              action: memberSignIn
+              icon: ri:calendar-check-line
+              context: common
+              target: _self
+              enabled: true
+              order: 120
+            - id: open-links-submit
+              label: 申请友链
+              action: openLinksSubmit
+              icon: ri:links-fill
+              context: common
+              target: _self
+              enabled: true
+              order: 130
           addLabel: 添加菜单项
           itemLabels:
             - type: iconify
@@ -231,7 +274,7 @@ spec:
               key: menuItems_id
               name: id
               label: 标识
-              help: 留空时会自动生成随机标识。
+              help: 留空时根据菜单内容生成稳定标识；建议填写唯一标识。
             - $formkit: text
               key: menuItems_label
               name: label
@@ -249,6 +292,20 @@ spec:
                   value: copyPageTitleLink
                 - label: 复制选中文本
                   value: copySelection
+                - label: 复制 Markdown 引用
+                  value: copyMarkdownQuote
+                - label: 摘句分享卡
+                  value: createQuoteCard
+                - label: 保存阅读位置
+                  value: saveReadingPosition
+                - label: 继续上次阅读
+                  value: resumeReadingPosition
+                - label: AI 通俗解释
+                  value: aiExplain
+                - label: AI 举个例子
+                  value: aiExample
+                - label: AI 翻译选区
+                  value: aiTranslate
                 - label: 复制图片地址
                   value: copyImageUrl
                 - label: 打开图片
@@ -333,6 +390,25 @@ spec:
                   value: link
                 - label: 图片
                   value: image
+                - label: 文章页
+                  value: article
+            - $formkit: select
+              name: group
+              label: 分组
+              value: auto
+              options:
+                - label: 根据动作自动分组
+                  value: auto
+                - label: 阅读工具
+                  value: reading
+                - label: 复制与分享
+                  value: sharing
+                - label: 页面导航
+                  value: navigation
+                - label: 站点互动
+                  value: interaction
+                - label: 自定义
+                  value: custom
             - $formkit: iconify
               key: menuItems_icon
               name: icon
@@ -363,3 +439,63 @@ spec:
               name: order
               label: 排序
               value: 0
+    - group: ai
+      label: AI 阅读助手
+      formSchema:
+        - $formkit: switch
+          name: enabled
+          label: 启用 AI 阅读助手
+          value: false
+          help: 需要安装并启用 AI Foundation 1.1.1 或更新的 1.x 版本，且 Halo 不低于 2.26；未启用时普通菜单照常工作。
+        - $formkit: rightMenuAiModel
+          name: modelName
+          label: 语言模型
+          help: 留空使用 AI Foundation 的默认语言模型；供应商凭据在 AI Foundation 管理。
+        - $formkit: switch
+          name: allowAnonymous
+          label: 允许限额访客使用
+          value: false
+          help: 默认仅登录用户可用；开启后访客按服务端识别的远端地址限流，站点总额度仍生效。
+        - $formkit: number
+          name: maxInputCharacters
+          label: 每次最多输入字符数
+          value: 3000
+          min: 100
+          max: 6000
+          validation: required|number|min:100|max:6000
+        - $formkit: number
+          name: maxOutputTokens
+          label: 每次最多输出 Token
+          value: 800
+          min: 100
+          max: 2000
+          validation: required|number|min:100|max:2000
+        - $formkit: number
+          name: requestsPerMinute
+          label: 每位用户每分钟次数
+          value: 3
+          min: 1
+          max: 20
+          validation: required|number|min:1|max:20
+        - $formkit: number
+          name: requestsPerDay
+          label: 每位用户每天次数
+          value: 20
+          min: 1
+          max: 200
+          validation: required|number|min:1|max:200
+        - $formkit: number
+          name: siteRequestsPerDay
+          label: 站点每天总次数
+          value: 200
+          min: 1
+          max: 10000
+          validation: required|number|min:1|max:10000
+          help: 按北京时间计数；计数保存在内存，插件或 Halo 重启会重置。失败和停止的生成也计次。
+        - $formkit: number
+          name: maxConcurrentRequests
+          label: 站点最多同时生成数
+          value: 2
+          min: 1
+          max: 10
+          validation: required|number|min:1|max:10

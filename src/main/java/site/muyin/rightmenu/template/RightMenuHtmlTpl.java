@@ -40,7 +40,13 @@ public final class RightMenuHtmlTpl {
     }
 
     public static String runtimeScript(String version) {
-        return "\n<script id=\"right-menu-runtime\" src=\"%s/right-menu.js?version=%s\" defer></script>\n"
+        return "\n<script src=\"%s/right-menu-panel.js?version=%s\" defer></script>\n"
+            .formatted(ASSET_BASE_PATH, version)
+            + "<script src=\"%s/right-menu-reader.js?version=%s\" defer></script>\n"
+            .formatted(ASSET_BASE_PATH, version)
+            + "<script src=\"%s/right-menu-ai.js?version=%s\" defer></script>\n"
+            .formatted(ASSET_BASE_PATH, version)
+            + "<script id=\"right-menu-runtime\" src=\"%s/right-menu.js?version=%s\" defer></script>\n"
             .formatted(ASSET_BASE_PATH, version);
     }
 
@@ -52,6 +58,7 @@ public final class RightMenuHtmlTpl {
         config.put("excludePaths", setting.excludePathsOrDefault());
         config.put("pjaxCompatible", setting.pjaxCompatibleOrDefault());
         config.put("showNativeOnEditable", setting.showNativeOnEditableOrDefault());
+        config.put("groupMenu", !Boolean.FALSE.equals(setting.getGroupMenu()));
         config.put("menuItems", setting.enabledMenuItems());
         config.put("style", setting.styleOrDefault());
         if (postContext != null && !isBlank(postContext.subjectName())) {
